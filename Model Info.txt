@@ -1,0 +1,13 @@
+SARIMA Model
+
+1) Extension of ARIMA model. 
+2) Time Series Model that works on seasonal variation of data
+3) Features :
+    3.1) Auto regression : This component uses the dependency between an observation and a number of lagged observations (previous values). For example, AR(1) uses the previous observation, AR(2) uses the previous two observations, and so on.
+    3.2) Integration : This component involves differencing the time series data to make it stationary. Stationarity means that the statistical properties of the series, such as mean and variance, are constant over time. Differencing is done to remove trends or seasonal structures.
+    3.3) Moving Average : This component uses the dependency between an observation and a residual error from a moving average model applied to lagged observations.
+    3.4) Seasonal handling
+
+4) Steps to identify seasonal and non seasonal parameters to supply to the model : https://chatgpt.com/c/c6848a7c-0f77-4b82-a26a-8d5c6d1bf0fc
+
+5) Base model code : https://chatgpt.com/c/8128ba4a-b6b4-4e2e-93dd-4ba22a19660e
