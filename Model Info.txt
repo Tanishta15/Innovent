@@ -8,6 +8,9 @@ SARIMA Model
     3.3) Moving Average : This component uses the dependency between an observation and a residual error from a moving average model applied to lagged observations.
     3.4) Seasonal handling
 
+
+
+Requires sign in to my google account
 4) Steps to identify seasonal and non seasonal parameters to supply to the model : https://chatgpt.com/c/c6848a7c-0f77-4b82-a26a-8d5c6d1bf0fc
 
 5) Base model code : https://chatgpt.com/c/8128ba4a-b6b4-4e2e-93dd-4ba22a19660e
