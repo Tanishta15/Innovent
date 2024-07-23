@@ -11,6 +11,6 @@ SARIMA Model
 
 
 Requires sign in to my google account
-4) Steps to identify seasonal and non seasonal parameters to supply to the model : https://chatgpt.com/c/c6848a7c-0f77-4b82-a26a-8d5c6d1bf0fc
+4) Steps to identify seasonal and non seasonal parameters to supply to the model : https://chatgpt.com/share/839728d3-aad9-4faf-9bcf-1a455b26ad54
 
-5) Base model code : https://chatgpt.com/c/8128ba4a-b6b4-4e2e-93dd-4ba22a19660e
+5) Base model code : https://chatgpt.com/share/4eb8e1e7-921f-4e4c-95fd-ca146ff58e5e
