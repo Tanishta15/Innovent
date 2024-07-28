@@ -4,6 +4,7 @@ from sklearn.metrics import mean_squared_error
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm
+import requests
 
 # Load the CSV file
 data = pd.read_csv('/Users/visheshgoyal/Innovent/Vishesh Temporary Folder/Edited Dataset.csv')
@@ -21,7 +22,7 @@ mse_results = {}
 
 # Define parameters for EOQ
 annual_demand_estimate = 365  # Estimate annual demand (can be adjusted based on historical data)
-holding_cost_per_unit_per_year = 10  # Example value, should be defined based on actual costs
+holding_cost_per_unit_per_year = 2  # Example value, should be defined based on actual costs
 
 # Iterate over each product ID
 for product_id in product_ids:
@@ -34,7 +35,27 @@ for product_id in product_ids:
     starting_inventory = data[data['Product_ID'] == product_id]['Inventory_Level'].values[0]
     transportation_cost = data[data['Product_ID'] == product_id]['Transportation_Cost'].values[0]
     order_cost = transportation_cost
+    safety_stock = data[data['Product_ID'] == product_id]['safety_stock'].values[0]
+
+    # EOQ
     eoq = np.sqrt((2 * annual_demand_estimate * order_cost) / holding_cost_per_unit_per_year)
+    print(f'EOQ for Product {product_id}: {eoq}')
+    print(f'Safety Stock for Product {product_id}: {safety_stock}')
+
+    # Map data
+    city_of_production = data[data['Product_ID'] == product_id]['City_of_Production'].values[0]
+    city_of_plant = 'Ghaziabad'
+    url = f"https://maps.googleapis.com/maps/api/directions/json?origin={city_of_production}&destination={city_of_plant}&key=AIzaSyBA57ryMyTD27c-UkdDy-TfWNtTwJ6bC34"
+    response = requests.get(url)
+    routedata = response.json()
+    if routedata['status'] == 'OK':
+        route = routedata['routes'][0]['legs'][0]
+        distance = route['distance']['text']
+        duration = route['duration']['text']
+        print(f"Distance from {city_of_production} to {city_of_plant}: {distance}")
+        print(f"Estimated travel time: {duration}")
+    else:
+        print("Error:", data['status'])
 
     # Split the data into training and testing sets
     train_size = int(len(product_data) * 0.8)
@@ -65,6 +86,13 @@ for product_id in product_ids:
     mse = mean_squared_error(test, forecast)
     mse_results[product_id] = mse
     print(f'Product ID: {product_id}, MSE: {mse}')
+
+    # Risk Management
+    risk_data = data.groupby('Product_ID')['Supply_Chain_Risk'].mean()
+    risk_data.plot(kind='bar', title='Average Supply Chain Risk by Product')
+    plt.xlabel('Product_ID')
+    plt.ylabel('Risk')
+    plt.show()
 
     # Plotting the forecast against actual values
     plt.figure(figsize=(10, 4))
