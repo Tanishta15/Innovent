@@ -19,6 +19,10 @@ product_ids = data['Product_ID'].unique()
 forecast_results = {}
 mse_results = {}
 
+# Define parameters for EOQ
+annual_demand_estimate = 365  # Estimate annual demand (can be adjusted based on historical data)
+holding_cost_per_unit_per_year = 10  # Example value, should be defined based on actual costs
+
 # Iterate over each product ID
 for product_id in product_ids:
     # Filter data for the 
@@ -28,6 +32,9 @@ for product_id in product_ids:
     reorder_point = data[data['Product_ID'] == product_id]['reorder_point'].values[0]
     supplier_lead_time = data[data['Product_ID'] == product_id]['Supplier_Lead_Time'].values[0]
     starting_inventory = data[data['Product_ID'] == product_id]['Inventory_Level'].values[0]
+    transportation_cost = data[data['Product_ID'] == product_id]['Transportation_Cost'].values[0]
+    order_cost = transportation_cost
+    eoq = np.sqrt((2 * annual_demand_estimate * order_cost) / holding_cost_per_unit_per_year)
 
     # Split the data into training and testing sets
     train_size = int(len(product_data) * 0.8)
@@ -50,8 +57,8 @@ for product_id in product_ids:
         
         # Check if inventory falls below reorder point
         if inventory_level <= reorder_point:
+            inventory_level += eoq
             print(f"Reorder triggered for Product {product_id}")
-            inventory_level += supplier_lead_time * demand  # Replenish inventory (example calculation)
             print(f"New inventory level after reorder: {inventory_level}")
     
     # Evaluate the forecast
