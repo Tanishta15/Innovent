@@ -3,8 +3,11 @@ from statsmodels.tsa.statespace.sarimax import SARIMAX
 from sklearn.metrics import mean_squared_error
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.stats import norm
+from io import BytesIO
 import requests
+import urllib
+from PIL import Image
+import re
 
 # Load the CSV file
 data = pd.read_csv('/Users/visheshgoyal/Innovent/Vishesh Temporary Folder/Edited Dataset.csv')
@@ -54,6 +57,27 @@ for product_id in product_ids:
         duration = route['duration']['text']
         print(f"Distance from {city_of_production} to {city_of_plant}: {distance}")
         print(f"Estimated travel time: {duration}")
+        polyline = routedata['routes'][0]['overview_polyline']['points']
+        static_map_url = (
+            f'https://maps.googleapis.com/maps/api/staticmap?size=600x400&maptype=roadmap'
+            f'&path=enc:{urllib.parse.quote(polyline)}'
+            f'&key=AIzaSyBA57ryMyTD27c-UkdDy-TfWNtTwJ6bC34'
+        )
+
+        response = requests.get(static_map_url)
+        image_data = BytesIO(response.content)
+        image = Image.open(image_data)
+        image.show()
+
+        # Extract the textual instructions and save them to a file
+        with open(f'/Users/visheshgoyal/Innovent/Vishesh Temporary Folder/directions{product_id}.txt', 'w') as file:
+            for step in routedata['routes'][0]['legs'][0]['steps']:
+                # Extract the plain text instruction
+                instruction = step['html_instructions']
+                # Strip HTML tags
+                clean_instruction = re.sub('<.*?>', '', instruction)
+                # Write to file
+                file.write(clean_instruction + '\n')
     else:
         print("Error:", data['status'])
 
