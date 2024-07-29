@@ -28,6 +28,8 @@ holding_cost_per_unit_per_year = 2  # Example value, should be defined based on 
 
 # Create a base map
 m = folium.Map(location=[20.5937, 78.9629], zoom_start=5)  # Center of India
+# Save the map to an HTML file
+m.save("pune_ghaziabad_route_map.html1")
 
 # Iterate over each product ID
 for product_id in product_ids:
@@ -131,13 +133,5 @@ for product_id in product_ids:
     plt.legend()
     plt.show()
 
-# Save the map to an HTML file
-m.save("pune_ghaziabad_route_map.html1")
-
 print(forecast_results)
 print(mse_results)
-
-    plt.ylabel('Risk')
-    plt.show()
-
-risk_assessment()
