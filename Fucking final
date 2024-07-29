@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 results_path = '/Users/visheshgoyal/Innovent/Vishesh Temporary Folder/results.csv'
 
 # Create the results CSV file with headers if it doesn't exist
-headers = ['Product_ID', 'Inventory_Level', 'EOQ', 'Supplier_Lead_Time']
+headers = ['Date', 'Product_ID', 'Inventory_Level', 'EOQ', 'Supplier_Lead_Time']
 with open(results_path, 'w', newline='') as file:
     writer = csv.writer(file)
     writer.writerow(headers)
@@ -53,6 +53,7 @@ for product_id in product_ids:
 
     # EOQ
     eoq = np.sqrt((2 * annual_demand_estimate * order_cost) / holding_cost_per_unit_per_year)
+    eoq = round(eoq)
     print(f'EOQ for Product {product_id}: {eoq}')
     print(f'Safety Stock for Product {product_id}: {safety_stock}')
 
@@ -120,6 +121,7 @@ for product_id in product_ids:
         # Check if inventory falls below reorder point
         if inventory_level <= reorder_point:
             date_for_forecast = test.index[0].strftime('%d-%m-%Y')
+            inventory_level = round(inventory_level)
             # Save results to CSV
             with open(results_path, 'a', newline='') as file:
                 writer = csv.writer(file)
@@ -152,11 +154,11 @@ for product_id in product_ids:
 # Save the forecast results to CSV
 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 forecast_results_df = pd.DataFrame.from_dict(forecast_results, orient='index').transpose()
-forecast_results_df.to_csv(f'forecast_results_{timestamp}.csv', index=False)
+forecast_results_df.to_csv(f'forecast_results_.csv', index=False)
 
 # Save the MSE results to CSV
 mse_results_df = pd.DataFrame(list(mse_results.items()), columns=['Product_ID', 'MSE'])
-mse_results_df.to_csv(f'mse_results_{timestamp}.csv', index=False)
+mse_results_df.to_csv(f'mse_results_.csv', index=False)
 
 print(forecast_results)
 print(mse_results)
