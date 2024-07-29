@@ -1,186 +1,142 @@
 import pandas as pd
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+from sklearn.metrics import mean_squared_error
 import numpy as np
-from statsmodels.tsa.seasonal import seasonal_decompose
-from statsmodels.tsa.arima.model import ARIMA
 import matplotlib.pyplot as plt
-from ortools.constraint_solver import routing_enums_pb2
-from ortools.constraint_solver import pywrapcp
-from ortools.sat.python import cp_model
+from scipy.stats import norm
+import requests
+import folium
+import polyline
 
-# Create a small sample dataset
-data = {
-    'Date': pd.date_range(start='2020-01-01', periods=24, freq='M').tolist() * 3,
-    'Product_ID': ['A1']*24 + ['B1']*24 + ['C1']*24,
-    'Demand': [50, 60, 65, 70, 80, 90, 55, 75, 85, 95, 105, 110, 60, 65, 70, 75, 80, 85, 90, 95, 100, 110, 120, 130] * 3,
-    'Supplier_Lead_Time': [2, 3, 2, 3, 4, 3, 2, 3, 4, 3, 2, 3, 2, 3, 2, 3, 4, 3, 2, 3, 4, 3, 2, 3] * 3,
-    'Supply_Chain_Risk': [0.1, 0.2, 0.15, 0.2, 0.25, 0.2, 0.1, 0.2, 0.25, 0.2, 0.1, 0.2, 0.1, 0.2, 0.15, 0.2, 0.25, 0.2, 0.1, 0.2, 0.25, 0.2, 0.1, 0.2] * 3
-}
+# Load the CSV file
+data = pd.read_csv('/Users/tanishta/Desktop/Python/Innovent/Innovent/Edited Dataset.csv')
 
-df = pd.DataFrame(data)
+# Assuming 'date' is a column and 'product_id' and 'quantity_sold' are columns
+data['Date'] = pd.to_datetime(data['Date'])
+data.set_index('Date', inplace=True)
 
-# Save the dataset to a CSV file
-df.to_csv('small_parts_revenue_dataset.csv', index=False)
+# Get unique product IDs
+product_ids = data['Product_ID'].unique()
 
-# Load the dataset
-df = pd.read_csv('small_parts_revenue_dataset.csv')
-df['Date'] = pd.to_datetime(df['Date'])
-df.set_index('Date', inplace=True)
+# Dictionary to hold results
+forecast_results = {}
+mse_results = {}
 
-# Inspect the dataset
-print(df.head())
-print(df.info())
+# Define parameters for EOQ
+annual_demand_estimate = 365  # Estimate annual demand (can be adjusted based on historical data)
+holding_cost_per_unit_per_year = 2  # Example value, should be defined based on actual costs
 
-# Check for missing values
-print(df.isnull().sum())
+# Create a base map
+m = folium.Map(location=[20.5937, 78.9629], zoom_start=5)  # Center of India
 
-# Improved Accuracy in Demand Forecasting
-def demand_forecasting(product_id):
-    product_demand = df[df['Product_ID'] == product_id]['Demand']
-    model = ARIMA(product_demand, order=(5, 1, 0))
-    model_fit = model.fit()
-    forecast = model_fit.forecast(steps=10)
-    plt.figure(figsize=(10, 5))
-    plt.plot(product_demand, label='Historical Demand')
-    plt.plot(forecast, label='Forecasted Demand', color='red')
-    plt.legend()
-    plt.title(f'Demand Forecasting for Product {product_id}')
-    plt.show()
+# Iterate over each product ID
+for product_id in product_ids:
+    # Filter data for the product
+    product_data = data[data['Product_ID'] == product_id]['quantity_sold'].dropna()
 
-demand_forecasting('A1')
+    if len(product_data) == 0:
+        print(f"No data available for Product {product_id}")
+        continue
 
-# Reduced Inventory Holding Costs and Minimized Stockouts
-def calculate_eoq_and_safety_stock(product_id):
-    product_demand = df[df['Product_ID'] == product_id]['Demand']
-    annual_demand = product_demand.sum()
-    ordering_cost = 100  # Cost per order
-    holding_cost = 2  # Holding cost per unit per year
-    EOQ = np.sqrt((2 * annual_demand * ordering_cost) / holding_cost)
-    
-    lead_time = df[df['Product_ID'] == product_id]['Supplier_Lead_Time'].mean()
-    demand_std = product_demand.std()
-    safety_stock = lead_time * demand_std
-    
-    print(f'EOQ for Product {product_id}: {EOQ}')
+    # Few Params
+    reorder_point = data[data['Product_ID'] == product_id]['reorder_point'].values[0]
+    supplier_lead_time = data[data['Product_ID'] == product_id]['Supplier_Lead_Time'].values[0]
+    starting_inventory = data[data['Product_ID'] == product_id]['Inventory_Level'].values[0]
+    transportation_cost = data[data['Product_ID'] == product_id]['Transportation_Cost'].values[0]
+    order_cost = transportation_cost
+    safety_stock = data[data['Product_ID'] == product_id]['safety_stock'].values[0]
+
+    # EOQ
+    eoq = np.sqrt((2 * annual_demand_estimate * order_cost) / holding_cost_per_unit_per_year)
+    print(f'EOQ for Product {product_id}: {eoq}')
     print(f'Safety Stock for Product {product_id}: {safety_stock}')
 
-calculate_eoq_and_safety_stock('A1')
+    # Map data
+    city_of_production = data[data['Product_ID'] == product_id]['City_of_Production'].values[0]
+    city_of_plant = 'Ghaziabad'
+    
+    # Fetch route from Google Maps API
+    api_key = 'YOUR_API_KEY'  # Make sure to replace with your actual API key
+    url = f"https://maps.googleapis.com/maps/api/directions/json?origin={city_of_production}&destination={city_of_plant}&key={api_key}"
+    response = requests.get(url)
+    routedata = response.json()
+    
+    if routedata['status'] == 'OK':
+        route = routedata['routes'][0]['overview_polyline']['points']
+        
+        try:
+            # Decode the polyline
+            decoded_points = polyline.decode(route)
+            
+            # Add route to the map
+            folium.PolyLine(decoded_points, color='green', weight=5, opacity=0.7).add_to(m)
+            
+            # Add markers for the cities
+            folium.Marker([18.5204, 73.8567], popup='Pune', icon=folium.Icon(color='blue')).add_to(m)
+            folium.Marker([28.6692, 77.4538], popup='Ghaziabad', icon=folium.Icon(color='red')).add_to(m)
+            
+            distance = routedata['routes'][0]['legs'][0]['distance']['text']
+            duration = routedata['routes'][0]['legs'][0]['duration']['text']
+            print(f"Distance from {city_of_production} to {city_of_plant}: {distance}")
+            print(f"Estimated travel time: {duration}")
+        except Exception as e:
+            print("Error decoding polyline:", e)
+    else:
+        print("Error in API request:", routedata.get('status', 'Unknown error'))
 
-# Enhanced Supplier Performance and Collaboration
-def supplier_performance():
-    performance = df.groupby('Product_ID')['Supplier_Lead_Time'].std()
-    print('Supplier Performance (Lead Time Variability):')
-    print(performance)
+    # Split the data into training and testing sets
+    train_size = int(len(product_data) * 0.8)
+    train, test = product_data[:train_size], product_data[train_size:]
+    
+    # Fit the SARIMAX model
+    model = SARIMAX(train, order=(1, 1, 1), seasonal_order=(1, 1, 1, 7))
+    model_fit = model.fit(disp=False)
+    
+    # Forecasting
+    forecast = model_fit.forecast(steps=len(test))
+    forecast_results[product_id] = forecast
 
-supplier_performance()
+    # Inventory Management
+    inventory_level = starting_inventory
+    for day, demand in enumerate(forecast, start=1):
+        print(f"Day {day} forecast for Product {product_id}: {demand}")
+        inventory_level -= demand  # Reduce inventory by forecasted demand
+        print(f"Inventory level: {inventory_level}")
+        
+        # Check if inventory falls below reorder point
+        if inventory_level <= reorder_point:
+            inventory_level += eoq
+            print(f"Reorder triggered for Product {product_id}")
+            print(f"New inventory level after reorder: {inventory_level}")
+    
+    # Evaluate the forecast
+    mse = mean_squared_error(test, forecast)
+    mse_results[product_id] = mse
+    print(f'Product ID: {product_id}, MSE: {mse}')
 
-# Optimized Transportation Routes and Reduced Logistics Costs
-def route_optimization():
-    def create_data_model():
-        data = {}
-        data['distance_matrix'] = [
-            [0, 1600, 1700, 1300,1400,1800,1500], 
-
-            [1600,0,1400,1700,700,800,200], 
-
-            [1700,1400,0,200,1300,1500,1300], 
-
-            [1300,1700,200,0,1500,1600,1600], 
-
-            [1400,700,1300,1500,0,500,100], 
-
-	        [1800,800,1500,1600,500,0,600], 
-
-            [1500,200,1300,1600,100,600,0],
-        ]
-        data['num_vehicles'] = 1
-        data['depot'] = 0
-        return data
-
-    data = create_data_model()
-    manager = pywrapcp.RoutingIndexManager(len(data['distance_matrix']),
-                                           data['num_vehicles'], data['depot'])
-    routing = pywrapcp.RoutingModel(manager)
-
-    def distance_callback(from_index, to_index):
-        from_node = manager.IndexToNode(from_index)
-        to_node = manager.IndexToNode(to_index)
-        return data['distance_matrix'][from_node][to_node]
-
-    transit_callback_index = routing.RegisterTransitCallback(distance_callback)
-    routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
-    search_parameters = pywrapcp.DefaultRoutingSearchParameters()
-    search_parameters.first_solution_strategy = (routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC)
-    solution = routing.SolveWithParameters(search_parameters)
-
-    if solution:
-        print('Objective: {}'.format(solution.ObjectiveValue()))
-        index = routing.Start(0)
-        plan_output = 'Route for vehicle 0:\n'
-        route_distance = 0
-        while not routing.IsEnd(index):
-            plan_output += ' {} ->'.format(manager.IndexToNode(index))
-            previous_index = index
-            index = solution.Value(routing.NextVar(index))
-            route_distance += routing.GetArcCostForVehicle(previous_index, index, 0)
-        plan_output += ' {}\n'.format(manager.IndexToNode(index))
-        plan_output += 'Distance of the route: {}m\n'.format(route_distance)
-        print(plan_output)
-
-route_optimization()
-
-# Increased Production Efficiency and Flexibility
-def production_scheduling():
-    jobs_data = [
-        [(0, 3), (1, 2), (2, 2)],
-        [(0, 2), (2, 1), (1, 4)],
-        [(1, 4), (2, 3)]
-    ]
-    model = cp_model.CpModel()
-    num_machines = 3
-    num_jobs = len(jobs_data)
-    all_machines = range(num_machines)
-    all_jobs = range(num_jobs)
-    all_tasks = {}
-    for job in all_jobs:
-        for task_id, task in enumerate(jobs_data[job]):
-            machine, duration = task
-            suffix = '_%i_%i' % (job, task_id)
-            all_tasks[job, task_id] = model.NewIntervalVar(
-                model.NewIntVar(0, 20, 'start' + suffix),
-                model.NewIntVar(duration, duration, 'duration' + suffix),
-                model.NewIntVar(0, 20, 'end' + suffix), 'interval' + suffix)
-
-    for machine in all_machines:
-        machine_tasks = []
-        for job in all_jobs:
-            for task_id, task in enumerate(jobs_data[job]):
-                if task[0] == machine:
-                    machine_tasks.append(all_tasks[job, task_id])
-        model.AddNoOverlap(machine_tasks)
-
-    obj_var = model.NewIntVar(0, 1000, 'makespan')
-    model.AddMaxEquality(obj_var, [all_tasks[job, len(jobs_data[job])-1].EndExpr() for job in all_jobs])
-    model.Minimize(obj_var)
-
-    solver = cp_model.CpSolver()
-    status = solver.Solve(model)
-
-    if status == cp_model.OPTIMAL:
-        print('Optimal Schedule Length: %i' % solver.ObjectiveValue())
-        for job in all_jobs:
-            for task_id, task in enumerate(jobs_data[job]):
-                machine, duration = task
-                start = solver.Value(all_tasks[job, task_id].StartExpr())
-                end = solver.Value(all_tasks[job, task_id].EndExpr())
-                print('Job %i Task %i: Start %i End %i' % (job, task_id, start, end))
-
-production_scheduling()
-
-# Mitigated Supply Chain Risks and Improved Resilience
-def risk_assessment():
-    risk_data = df.groupby('Product_ID')['Supply_Chain_Risk'].mean()
+    # Risk Management
+    risk_data = data.groupby('Product_ID')['Supply_Chain_Risk'].mean()
     risk_data.plot(kind='bar', title='Average Supply Chain Risk by Product')
     plt.xlabel('Product_ID')
+    plt.ylabel('Risk')
+    plt.show()
+
+    # Plotting the forecast against actual values
+    plt.figure(figsize=(10, 4))
+    plt.plot(test.index, test, label='Actual')
+    plt.plot(test.index, forecast, label='Forecast')
+    plt.title(f'Forecast vs Actual for Product ID {product_id}')
+    plt.xlabel('Date')
+    plt.ylabel('Quantity Sold')
+    plt.legend()
+    plt.show()
+
+# Save the map to an HTML file
+m.save("pune_ghaziabad_route_map.html1")
+
+print(forecast_results)
+print(mse_results)
+
     plt.ylabel('Risk')
     plt.show()
 
