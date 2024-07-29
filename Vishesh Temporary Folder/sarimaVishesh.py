@@ -10,10 +10,11 @@ from PIL import Image
 import re
 
 # Load the CSV file
-data = pd.read_csv('/Users/visheshgoyal/Innovent/Vishesh Temporary Folder/Edited Dataset.csv')
+data = pd.read_csv('/Users/visheshgoyal/Innovent/ExpandedDataset.csv')
 
 # Assuming 'date' is a column and 'product_id' and 'quantity_sold' are columns
 data['Date'] = pd.to_datetime(data['Date'])
+data['Date'] = data['Date'].dt.strftime('%d-%m-%Y')
 data.set_index('Date', inplace=True)
 
 # Get unique product IDs
