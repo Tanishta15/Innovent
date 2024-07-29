@@ -68,7 +68,7 @@ for product_id in product_ids:
         image_data = BytesIO(response.content)
         image = Image.open(image_data)
         image.show()
-        with open(f'/Users/visheshgoyal/Innovent/Vishesh Temporary Folder/Map{product_id}', 'wb') as file:
+        with open(f'/Users/visheshgoyal/Innovent/Vishesh Temporary Folder/Map{product_id}.png', 'wb') as file:
             file.write(response.content)
 
         # Extract the textual instructions and save them to a file
