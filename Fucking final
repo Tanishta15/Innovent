@@ -9,10 +9,10 @@ import urllib
 from PIL import Image
 import re
 import csv
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Define the path to the results CSV file
-results_path = '/Users/tanishta/Desktop/Python/Innovent/Innovent/results.csv'
+results_path = '/Users/visheshgoyal/Innovent/Vishesh Temporary Folder/results.csv'
 
 # Create the results CSV file with headers if it doesn't exist
 headers = ['Product_ID', 'Inventory_Level', 'EOQ', 'Supplier_Lead_Time']
@@ -21,7 +21,7 @@ with open(results_path, 'w', newline='') as file:
     writer.writerow(headers)
 
 # Load the CSV file
-data = pd.read_csv('/Users/tanishta/Desktop/Python/Innovent/Innovent/ExpandedDataset.csv')
+data = pd.read_csv('/Users/visheshgoyal/Innovent/ExpandedDataset.csv')
 
 # Assuming 'Date' is a column and 'Product_ID' and 'quantity_sold' are columns
 data['Date'] = pd.to_datetime(data['Date'], infer_datetime_format=True, dayfirst=True)
@@ -59,7 +59,7 @@ for product_id in product_ids:
     # Map data
     city_of_production = data[data['Product_ID'] == product_id]['City_of_Production'].values[0]
     city_of_plant = 'Ghaziabad'
-    url = f"https://maps.googleapis.com/maps/api/directions/json?origin={city_of_production}&destination={city_of_plant}&key=YOUR_GOOGLE_API_KEY"
+    url = f"https://maps.googleapis.com/maps/api/directions/json?origin={city_of_production}&destination={city_of_plant}&key=AIzaSyBA57ryMyTD27c-UkdDy-TfWNtTwJ6bC34"
     response = requests.get(url)
     routedata = response.json()
     if routedata['status'] == 'OK':
@@ -72,18 +72,18 @@ for product_id in product_ids:
         static_map_url = (
             f'https://maps.googleapis.com/maps/api/staticmap?size=600x400&maptype=roadmap'
             f'&path=enc:{urllib.parse.quote(polyline)}'
-            f'&key=YOUR_GOOGLE_API_KEY'
+            f'&key=AIzaSyBA57ryMyTD27c-UkdDy-TfWNtTwJ6bC34'
         )
 
         response = requests.get(static_map_url)
         image_data = BytesIO(response.content)
         image = Image.open(image_data)
         image.show()
-        with open(f'/Users/tanishta/Desktop/Python/Innovent/Innovent/Map images/Map{product_id}.png', 'wb') as file:
+        with open(f'/Users/visheshgoyal/Innovent/Vishesh Temporary Folder/Map{product_id}.png', 'wb') as file:
             file.write(response.content)
 
         # Extract the textual instructions and save them to a file
-        with open(f'/Users/tanishta/Desktop/Python/Innovent/Innovent/Directions{product_id}.txt', 'w') as file:
+        with open(f'/Users/visheshgoyal/Innovent/Vishesh Temporary Folder/directions{product_id}.txt', 'w') as file:
             for step in routedata['routes'][0]['legs'][0]['steps']:
                 # Extract the plain text instruction
                 instruction = step['html_instructions']
@@ -106,15 +106,24 @@ for product_id in product_ids:
     forecast = model_fit.forecast(steps=len(test))
     forecast_results[product_id] = forecast
 
+    date_for_forecast = test.index[0].strftime('%d-%m-%Y')
+    date_for_forecast = datetime.strptime(date_for_forecast, '%d-%m-%Y')
+
     # Inventory Management
     inventory_level = starting_inventory
     for day, demand in enumerate(forecast, start=1):
+        date_for_forecast = date_for_forecast - timedelta(days=day-1)
         print(f"Day {day} forecast for Product {product_id}: {demand}")
         inventory_level -= demand  # Reduce inventory by forecasted demand
         print(f"Inventory level: {inventory_level}")
         
         # Check if inventory falls below reorder point
         if inventory_level <= reorder_point:
+            date_for_forecast = test.index[0].strftime('%d-%m-%Y')
+            # Save results to CSV
+            with open(results_path, 'a', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow([date_for_forecast, product_id, inventory_level, eoq, supplier_lead_time])
             break
     
     # Evaluate the forecast
@@ -139,11 +148,6 @@ for product_id in product_ids:
     plt.ylabel('Quantity Sold')
     plt.legend()
     plt.show()
-
-    # Save results to CSV
-    with open(results_path, 'a', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow([product_id, inventory_level, eoq, supplier_lead_time])
 
 # Save the forecast results to CSV
 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
