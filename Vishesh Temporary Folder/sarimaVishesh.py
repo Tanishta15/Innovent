@@ -7,10 +7,11 @@ from io import BytesIO
 import requests
 import urllib
 from PIL import Image
-import re
+import re, csv
 
 # Load the CSV file
 data = pd.read_csv('/Users/visheshgoyal/Innovent/ExpandedDataset.csv')
+results = pd.read_csv('/Users/visheshgoyal/Innovent/Vishesh Temporary Folder/results.csv')
 
 # Assuming 'date' is a column and 'product_id' and 'quantity_sold' are columns
 data['Date'] = pd.to_datetime(data['Date'])
@@ -87,6 +88,7 @@ for product_id in product_ids:
     # Split the data into training and testing sets
     train_size = int(len(product_data) * 0.8)
     train, test = product_data[:train_size], product_data[train_size:]
+    dateRN = train.index[-1]
     
     # Fit the SARIMAX model
     model = SARIMAX(train, order=(1, 1, 1), seasonal_order=(1, 1, 1, 7))
@@ -105,9 +107,14 @@ for product_id in product_ids:
         
         # Check if inventory falls below reorder point
         if inventory_level <= reorder_point:
-            inventory_level += eoq
-            print(f"Reorder triggered for Product {product_id}")
-            print(f"New inventory level after reorder: {inventory_level}")
+
+
+
+            
+            
+
+            
+            break
     
     # Evaluate the forecast
     mse = mean_squared_error(test, forecast)
