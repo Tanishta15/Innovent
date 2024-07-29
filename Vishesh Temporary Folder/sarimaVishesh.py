@@ -68,6 +68,8 @@ for product_id in product_ids:
         image_data = BytesIO(response.content)
         image = Image.open(image_data)
         image.show()
+        with open(f'/Users/visheshgoyal/Innovent/Vishesh Temporary Folder/Map{product_id}', 'wb') as file:
+            file.write(response.content)
 
         # Extract the textual instructions and save them to a file
         with open(f'/Users/visheshgoyal/Innovent/Vishesh Temporary Folder/directions{product_id}.txt', 'w') as file:
@@ -132,3 +134,4 @@ print(forecast_results)
 print(mse_results)
 
 # referenced from : https://chatgpt.com/share/57c21c7d-b00e-40e8-a1bd-b46a272d4736
+
